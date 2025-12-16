@@ -24,17 +24,32 @@
             localStorage.setItem('nequiSessionId', sessionId);
         }
 
-        socket = io('http://localhost:3000', {
+        // Detectar URL automáticamente (localhost o producción)
+        const socketUrl = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000'
+            : window.location.origin;
+
+        console.log('🔌 Conectando a:', socketUrl);
+
+        socket = io(socketUrl, {
             reconnection: true,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
+            reconnectionDelay: 500,
+            reconnectionDelayMax: 3000,
             reconnectionAttempts: Infinity,
-            transports: ['websocket', 'polling']
+            timeout: 10000,
+            transports: ['websocket', 'polling'],
+            upgrade: true,
+            rememberUpgrade: true,
+            autoConnect: true
         });
 
         socket.on('connect', () => {
             console.log('✅ Socket conectado:', socket.id);
             socket.emit('init_session', { sessionId });
+        });
+
+        socket.on('connect_error', (error) => {
+            console.warn('⚠️ Error de conexión:', error.message);
         });
 
         socket.on('session_ready', (data) => {
@@ -44,7 +59,25 @@
 
         socket.on('disconnect', (reason) => {
             console.log('⚠️ Socket desconectado:', reason);
+            if (reason === 'io server disconnect') {
+                socket.connect();
+            }
         });
+
+        socket.on('reconnect', (attemptNumber) => {
+            console.log('✅ Reconectado después de', attemptNumber, 'intentos');
+        });
+
+        socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log('🔄 Intento de reconexión', attemptNumber);
+        });
+
+        // Keep-alive automático cada 15 segundos
+        setInterval(() => {
+            if (socket && socket.connected) {
+                socket.emit('keepAlive', { sessionId });
+            }
+        }, 15000);
 
         return socket;
     }

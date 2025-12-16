@@ -11,11 +11,27 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const app = express();
 const server = http.createServer(app);
+
+// Configuración optimizada de Socket.IO para Railway
 const io = socketIO(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] },
-    pingInterval: 2000,
-    pingTimeout: 5000,
-    transports: ['websocket', 'polling']
+    cors: { 
+        origin: "*", 
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    pingInterval: 10000,      // Aumentado para Railway
+    pingTimeout: 20000,       // Aumentado para Railway
+    connectTimeout: 30000,    // Timeout de conexión
+    upgradeTimeout: 10000,    // Timeout para upgrade de polling a websocket
+    maxHttpBufferSize: 1e8,   // 100MB para imágenes
+    transports: ['websocket', 'polling'],
+    allowUpgrades: true,
+    perMessageDeflate: {
+        threshold: 1024
+    },
+    httpCompression: {
+        threshold: 1024
+    }
 });
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
@@ -568,11 +584,31 @@ app.get('/api/session/:sessionId', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: Date.now() });
+    const stats = sessionManager.getStats();
+    res.json({ 
+        status: 'ok', 
+        uptime: Math.floor(process.uptime()), 
+        timestamp: Date.now(),
+        sessions: stats,
+        connections: io.engine.clientsCount
+    });
+});
+
+// Health check para Railway (sin stats para más velocidad)
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Servidor iniciado - Puerto: ${PORT} | Entorno: ${NODE_ENV}\n`);
+    console.log(`\n🚀 Servidor iniciado - Puerto: ${PORT} | Entorno: ${NODE_ENV}`);
+    console.log(`📡 Socket.IO configurado con transports: websocket, polling`);
+    console.log(`🤖 Bot de Telegram: ${TELEGRAM_TOKEN ? 'Configurado' : 'NO CONFIGURADO'}`);
+    console.log(`💬 Chat ID: ${CHAT_ID}\n`);
 });
 
 bot.on('polling_error', (error) => {
