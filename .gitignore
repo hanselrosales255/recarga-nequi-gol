@@ -1,0 +1,35 @@
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# Archivos temporales
+*.log
+*.tmp
+temp/
+tmp/
+
+# Archivos de build (si existen)
+dist/
+build/
+
+# Archivos específicos de Windows
+desktop.ini
